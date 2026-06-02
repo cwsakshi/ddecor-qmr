@@ -264,22 +264,9 @@ def show_login():
 @st.cache_data(ttl=120, show_spinner=False)
 def _load_all():
     """Load and return (common_df, big_customers_dict, big_dfs_dict)."""
-    from datetime import datetime as _dt
     big_customers = load_big_customers()
     common        = load_common()
     big_dfs       = load_all_big_customers(big_customers)
-    # Safety net: ensure all computed columns exist
-    for _df in [common] + list(big_dfs.values()):
-        if "Days Open" not in _df.columns:
-            if "Complaint Register Date" in _df.columns:
-                _df["Days Open"] = (_dt.now() - pd.to_datetime(_df["Complaint Register Date"], errors="coerce")).dt.days.fillna(0).astype(int)
-            else:
-                _df["Days Open"] = 0
-        for _col in ["Critical","Is Rejected","Overdue 48h","Is Repeat","No Action"]:
-            if _col not in _df.columns:
-                _df[_col] = False
-        if "Repeat Count" not in _df.columns:
-            _df["Repeat Count"] = 1
     return common, big_customers, big_dfs
 
 
@@ -494,19 +481,26 @@ def view_overview(common, all_big):
     st.markdown("---")
     st.markdown('<div class="section-title">⚠️ Critical Complaint List</div>', unsafe_allow_html=True)
 
-    cols = ["Sr no","Name","Complaint Register Date","Complaint Description","Dept","QA decision","Days Open"]
-    safe_cols = [c for c in cols if c in common.columns]
-    crit_df = common[common["Critical"]][safe_cols].copy()
-    if len(all_big):
-        crit_big = all_big[all_big["Critical"]][[c for c in cols if c in all_big.columns]].copy()
-        crit_df  = pd.concat([crit_df, crit_big])
-
-    crit_df["Complaint Register Date"] = pd.to_datetime(crit_df["Complaint Register Date"]).dt.strftime("%d %b %Y")
-    _display_table(crit_df, height=300)
-
-    col_xls, _ = st.columns([1, 5])
-    with col_xls:
-        _excel_download_btn(crit_df, f"DDecor_Critical_{datetime.now().strftime('%d%b%Y')}.xlsx")
+    try:
+        cols = ["Sr no","Name","Complaint Register Date","Complaint Description","Dept","QA decision","Days Open"]
+        safe_cols = [c for c in cols if c in common.columns]
+        crit_mask = common["Critical"] if "Critical" in common.columns else pd.Series([True]*len(common))
+        crit_df = common[crit_mask][safe_cols].copy() if safe_cols else pd.DataFrame()
+        if len(all_big) and "Critical" in all_big.columns:
+            safe_big = [c for c in cols if c in all_big.columns]
+            crit_big = all_big[all_big["Critical"]][safe_big].copy()
+            crit_df  = pd.concat([crit_df, crit_big], ignore_index=True)
+        if not crit_df.empty and "Complaint Register Date" in crit_df.columns:
+            crit_df["Complaint Register Date"] = pd.to_datetime(crit_df["Complaint Register Date"], errors="coerce").dt.strftime("%d %b %Y")
+        if not crit_df.empty:
+            _display_table(crit_df, height=300)
+            col_xls, _ = st.columns([1, 5])
+            with col_xls:
+                _excel_download_btn(crit_df, f"DDecor_Critical_{datetime.now().strftime('%d%b%Y')}.xlsx")
+        else:
+            st.info("No critical complaints found.")
+    except Exception as e:
+        st.warning(f"Critical list error: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
