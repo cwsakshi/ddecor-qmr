@@ -72,11 +72,14 @@ def _add_computed_columns(df: pd.DataFrame, name_fallback: str = "") -> pd.DataF
     df["QA decision"] = df["QA decision"].fillna("Pending").str.strip().str.title()
 
     # Days since complaint was registered
-    df["Days Open"] = (
-        (datetime.now() - df["Complaint Register Date"])
-        .dt.days.fillna(0)
-        .astype(int)
-    )
+    try:
+        df["Days Open"] = (
+            (datetime.now() - df["Complaint Register Date"])
+            .dt.days.fillna(0)
+            .astype(int)
+        )
+    except Exception:
+        df["Days Open"] = 0
 
     # Alarm triggers
     df["No Action"]   = df["Corrective action"].isna() & ~df["QA decision"].str.lower().isin(["closed", "accepted"])
