@@ -264,9 +264,22 @@ def show_login():
 @st.cache_data(ttl=120, show_spinner=False)
 def _load_all():
     """Load and return (common_df, big_customers_dict, big_dfs_dict)."""
+    from datetime import datetime as _dt
     big_customers = load_big_customers()
     common        = load_common()
     big_dfs       = load_all_big_customers(big_customers)
+    # Safety net: ensure all computed columns exist
+    for _df in [common] + list(big_dfs.values()):
+        if "Days Open" not in _df.columns:
+            if "Complaint Register Date" in _df.columns:
+                _df["Days Open"] = (_dt.now() - pd.to_datetime(_df["Complaint Register Date"], errors="coerce")).dt.days.fillna(0).astype(int)
+            else:
+                _df["Days Open"] = 0
+        for _col in ["Critical","Is Rejected","Overdue 48h","Is Repeat","No Action"]:
+            if _col not in _df.columns:
+                _df[_col] = False
+        if "Repeat Count" not in _df.columns:
+            _df["Repeat Count"] = 1
     return common, big_customers, big_dfs
 
 
