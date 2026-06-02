@@ -482,7 +482,8 @@ def view_overview(common, all_big):
     st.markdown('<div class="section-title">⚠️ Critical Complaint List</div>', unsafe_allow_html=True)
 
     cols = ["Sr no","Name","Complaint Register Date","Complaint Description","Dept","QA decision","Days Open"]
-    crit_df = common[common["Critical"]][cols].copy()
+    safe_cols = [c for c in cols if c in common.columns]
+    crit_df = common[common["Critical"]][safe_cols].copy()
     if len(all_big):
         crit_big = all_big[all_big["Critical"]][[c for c in cols if c in all_big.columns]].copy()
         crit_df  = pd.concat([crit_df, crit_big])
