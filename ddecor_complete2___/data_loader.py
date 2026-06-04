@@ -165,7 +165,7 @@ def load_all_big_customers(big_customers: dict) -> dict:
     """
     result = {}
     for cname, cfile in big_customers.items():
-        if os.path.exists(cfile):
+        if os.path.exists(_path(cfile)):
             result[cname] = load_big_customer(cfile, customer_name=cname)
     return result
 
@@ -309,13 +309,9 @@ def log_alarm(department: str, count: int, email_sent_to: str) -> None:
 
 def load_alarm_log() -> pd.DataFrame:
     """Load the alarm log CSV, returning empty DataFrame if not found."""
-    try:
-        alarm_path = _path(ALARM_LOG_FILE)
-        if os.path.exists(alarm_path):
-            return pd.read_csv(alarm_path)
-        return pd.DataFrame(columns=["Timestamp", "Department", "Count", "Email Sent To"])
-    except Exception:
-        return pd.DataFrame(columns=["Timestamp", "Department", "Count", "Email Sent To"])
+    if os.path.exists(ALARM_LOG_FILE):
+        return pd.read_csv(ALARM_LOG_FILE)
+    return pd.DataFrame(columns=["Timestamp", "Department", "Count", "Email Sent To"])
 
 
 # ── COMPLAINT TIMELINE ────────────────────────────────────────────────────────
