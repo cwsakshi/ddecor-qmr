@@ -1,4 +1,3 @@
-
 """
 app.py
 ──────
@@ -482,26 +481,18 @@ def view_overview(common, all_big):
     st.markdown("---")
     st.markdown('<div class="section-title">⚠️ Critical Complaint List</div>', unsafe_allow_html=True)
 
-    try:
-        cols = ["Sr no","Name","Complaint Register Date","Complaint Description","Dept","QA decision","Days Open"]
-        safe_cols = [c for c in cols if c in common.columns]
-        crit_mask = common["Critical"] if "Critical" in common.columns else pd.Series([True]*len(common))
-        crit_df = common[crit_mask][safe_cols].copy() if safe_cols else pd.DataFrame()
-        if len(all_big) and "Critical" in all_big.columns:
-            safe_big = [c for c in cols if c in all_big.columns]
-            crit_big = all_big[all_big["Critical"]][safe_big].copy()
-            crit_df  = pd.concat([crit_df, crit_big], ignore_index=True)
-        if not crit_df.empty and "Complaint Register Date" in crit_df.columns:
-            crit_df["Complaint Register Date"] = pd.to_datetime(crit_df["Complaint Register Date"], errors="coerce").dt.strftime("%d %b %Y")
-        if not crit_df.empty:
-            _display_table(crit_df, height=300)
-            col_xls, _ = st.columns([1, 5])
-            with col_xls:
-                _excel_download_btn(crit_df, f"DDecor_Critical_{datetime.now().strftime('%d%b%Y')}.xlsx")
-        else:
-            st.info("No critical complaints found.")
-    except Exception as e:
-        st.warning(f"Critical list error: {e}")
+    cols = ["Sr no","Name","Complaint Register Date","Complaint Description","Dept","QA decision","Days Open"]
+    crit_df = common[common["Critical"]][cols].copy()
+    if len(all_big):
+        crit_big = all_big[all_big["Critical"]][[c for c in cols if c in all_big.columns]].copy()
+        crit_df  = pd.concat([crit_df, crit_big])
+
+    crit_df["Complaint Register Date"] = pd.to_datetime(crit_df["Complaint Register Date"]).dt.strftime("%d %b %Y")
+    _display_table(crit_df, height=300)
+
+    col_xls, _ = st.columns([1, 5])
+    with col_xls:
+        _excel_download_btn(crit_df, f"DDecor_Critical_{datetime.now().strftime('%d%b%Y')}.xlsx")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1065,7 +1056,7 @@ def view_settings(big_customers):
     for cname, cfile in list(big_customers.items()):
         c1, c2, c3 = st.columns([3, 3, 1])
         c1.markdown(f"**{cname}**")
-        c2.markdown(f"`{cfile}`  {'✅ File exists' if os.path.exists(cfile) else '❌ File not found'}")
+        c2.markdown(f"`{cfile}`  {'✅ File exists' if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), cfile)) else '❌ File not found'}")
         with c3:
             if st.button("Remove", key=f"rm_{cname}"):
                 del big_customers[cname]
