@@ -1,4 +1,3 @@
-
 """
 data_loader.py
 ──────────────
@@ -13,19 +12,10 @@ import io
 import pandas as pd
 from datetime import datetime
 
-# ── PATH HELPER ───────────────────────────────────────────────────────────────
-# Get the directory where this file lives so CSV paths work on any server
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-def _path(filename: str) -> str:
-    """Return absolute path to a file in the same folder as data_loader.py."""
-    return os.path.join(_BASE_DIR, filename)
-
 
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
 BIG_CUSTOMERS_FILE = "big_customers_config.json"
-
 ALARM_LOG_FILE     = "alarm_log.csv"
 ALERTED_FILE       = "alerted_complaints.json"
 
@@ -53,19 +43,18 @@ DEMO_USERS = {
 
 def load_big_customers() -> dict:
     """Load the big_customers_config.json mapping {customer_name: csv_filepath}."""
-    BIG_CUSTOMERS_FILE_PATH = _path(BIG_CUSTOMERS_FILE) if "_BASE_DIR" in dir() else BIG_CUSTOMERS_FILE
-    if os.path.exists(_path(BIG_CUSTOMERS_FILE)):
-        with open(_path(BIG_CUSTOMERS_FILE)) as f:
+    if os.path.exists(BIG_CUSTOMERS_FILE):
+        with open(BIG_CUSTOMERS_FILE) as f:
             return json.load(f)
     default = {"BRU TEXTILES NV": "bru_textiles_dummy.csv"}
-    with open(_path(BIG_CUSTOMERS_FILE), "w") as f:
+    with open(BIG_CUSTOMERS_FILE, "w") as f:
         json.dump(default, f)
     return default
 
 
 def save_big_customers(data: dict) -> None:
     """Persist the big customer config dict back to JSON."""
-    with open(_path(BIG_CUSTOMERS_FILE), "w") as f:
+    with open(BIG_CUSTOMERS_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 
@@ -112,7 +101,7 @@ def load_common() -> pd.DataFrame:
     Returns a fully-enriched DataFrame ready for display/analysis.
     """
     try:
-        df = pd.read_csv(_path("common_complaints_dummy.csv"))
+        df = pd.read_csv("common_complaints_dummy.csv")
         df["Complaint Register Date"] = pd.to_datetime(df["Complaint Register Date"], errors="coerce")
         df["Source"] = "Common"
 
@@ -133,7 +122,7 @@ def load_big_customer(filepath: str, customer_name: str = "") -> pd.DataFrame:
     Handles column-name variations between different customer exports.
     """
     try:
-        df = pd.read_csv(_path(filepath) if not os.path.isabs(filepath) else filepath)
+        df = pd.read_csv(filepath)
 
         # ── normalise date ──
         date_col = "CTG RECD DATE" if "CTG RECD DATE" in df.columns else df.columns[2]
@@ -176,7 +165,7 @@ def load_all_big_customers(big_customers: dict) -> dict:
     """
     result = {}
     for cname, cfile in big_customers.items():
-        if os.path.exists(_path(cfile)):
+        if os.path.exists(cfile):
             result[cname] = load_big_customer(cfile, customer_name=cname)
     return result
 
@@ -310,19 +299,23 @@ def log_alarm(department: str, count: int, email_sent_to: str) -> None:
         "Count":        count,
         "Email Sent To": email_sent_to,
     }
-    if os.path.exists(_path(ALARM_LOG_FILE)):
-        df = pd.read_csv(_path(ALARM_LOG_FILE))
+    if os.path.exists(ALARM_LOG_FILE):
+        df = pd.read_csv(ALARM_LOG_FILE)
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     else:
         df = pd.DataFrame([row])
-    df.to_csv(_path(ALARM_LOG_FILE), index=False)
+    df.to_csv(ALARM_LOG_FILE, index=False)
 
 
 def load_alarm_log() -> pd.DataFrame:
     """Load the alarm log CSV, returning empty DataFrame if not found."""
-    if os.path.exists(_path(ALARM_LOG_FILE)):
-        return pd.read_csv(ALARM_LOG_FILE)
-    return pd.DataFrame(columns=["Timestamp", "Department", "Count", "Email Sent To"])
+    try:
+        alarm_path = _path(ALARM_LOG_FILE)
+        if os.path.exists(alarm_path):
+            return pd.read_csv(alarm_path)
+        return pd.DataFrame(columns=["Timestamp", "Department", "Count", "Email Sent To"])
+    except Exception:
+        return pd.DataFrame(columns=["Timestamp", "Department", "Count", "Email Sent To"])
 
 
 # ── COMPLAINT TIMELINE ────────────────────────────────────────────────────────
@@ -382,7 +375,7 @@ def complaint_timeline(row: pd.Series) -> list[dict]:
 
 def add_row_to_csv(filepath: str, new_row: dict) -> None:
     """Append a single dict as a new row to an existing CSV file."""
-    df = pd.read_csv(_path(filepath) if not os.path.isabs(filepath) else filepath)
+    df = pd.read_csv(filepath)
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     df.to_csv(filepath, index=False)
 
